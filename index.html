@@ -128,6 +128,21 @@ details.legendbox>summary{font-size:13px;color:var(--ink-2);font-weight:600}
   html body.st details>summary:not(#_),html body details>summary{font-size:15px;line-height:1.4;letter-spacing:0}
   html body.st .info:not(#_) p{font-size:14px}
 }
+
+/* 名牌精簡（2026-10-12 使用者覺得太大、擋到角色）：一行小膠囊、半透明，滑過或選中才完整亮；選擇器加兩個 :not(#_) 蓋過主題 HUD */
+html body .tag:not(#_):not(#_){display:flex;align-items:center;gap:5px;padding:1px 7px;border-radius:999px;min-width:0;
+  font:600 11px/1.5 var(--num);background:rgba(20,16,14,.62);color:#f3eee7;box-shadow:none;opacity:.88;transform:translateY(-2px);backdrop-filter:blur(2px)}
+html body .tag:not(#_):not(#_) b{font-size:11px;font-weight:600;color:#f3eee7;text-shadow:none}
+html body .tag:not(#_):not(#_) .p{font-size:11.5px;font-weight:700;text-shadow:none}
+html body .tag:not(#_):not(#_) .p.pos{color:#7dffa0} html body .tag:not(#_):not(#_) .p.neg{color:#ff8a8a} html body .tag:not(#_):not(#_) .p.mut{color:#c9c2bb}
+html body .tag:not(#_):not(#_) .w{margin:0;padding:0 5px;border-radius:999px;font-size:10px;line-height:1.5;background:#dc2626;color:#fff;box-shadow:none}
+html body .tag:not(#_):not(#_) .dot{width:6px;height:6px;border-radius:50%;background:#f59e0b;display:inline-block}
+html body .tag.on:not(#_):not(#_){opacity:1;outline:1.5px solid #ff8a5c;outline-offset:1px}
+html body.st .tag:not(#_):not(#_){background:rgba(10,6,7,.66);box-shadow:0 0 0 1px rgba(203,29,41,.45)}
+html body.st .tag:not(#_):not(#_) b{color:#ffb3b5;font-family:"VT323",ui-monospace,monospace;font-size:13px;font-weight:400}
+html body.st .tag:not(#_):not(#_) .p{font-family:"VT323",ui-monospace,monospace;font-size:14px;font-weight:400}
+@media (max-width:640px){ html body .tag:not(#_):not(#_){padding:0 5px;gap:4px} html body .tag:not(#_):not(#_) b,html body .tag:not(#_):not(#_) .p{font-size:10px}
+  html body.st .tag:not(#_):not(#_) b,html body.st .tag:not(#_):not(#_) .p{font-size:12px} }
 </style>
 </head>
 <body>

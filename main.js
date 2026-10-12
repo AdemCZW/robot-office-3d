@@ -182,9 +182,9 @@ function doneEvents() {
   return g.concat(m).sort((a, b) => a.ts - b.ts);
 }
 const nameOf = s => (s.base.length > 9 ? s.base.slice(0, 8) + "…" : s.base) + (s.trend ? (s.trend === "short" ? " 空" : " 多") : "");
-function tagHTML(s) {   // 精簡名牌：一行名稱＋浮動；離強平用左邊色條與小字
-  return '<div class="r"><b>' + nameOf(s) + '</b><span class="p ' + cls(s.profit) + '">' + (s.profit == null ? KIND_NM[s.kind] : fmt(s.profit)) + '</span></div>' +
-    (s.alert ? '<div class="w ' + (s.alert === "red" ? "red" : "") + '">離強平 ' + s.liq.toFixed(1) + '%</div>' : "");
+function tagHTML(s) {   // 小名牌：一行「幣種 浮動」；只有紅色警示才附離強平 %，黃色只亮一顆小燈
+  const warn = s.alert === "red" ? '<span class="w red">' + s.liq.toFixed(1) + '%</span>' : s.alert === "yellow" ? '<i class="dot"></i>' : "";
+  return '<b>' + nameOf(s) + '</b><span class="p ' + cls(s.profit) + '">' + (s.profit == null ? KIND_NM[s.kind] : fmt(s.profit)) + '</span>' + warn;
 }
 // 工位：同一台機器人沿用同一組模型，只更新狀態；台數或順序變了才重建
 // 員工：主題開啟且有角色模組時用 80 年代角色（依座位輪流），站著的站點用站姿；沒有角色模組時坐姿用原本的員工、站姿用送件員的站立人物
@@ -212,6 +212,7 @@ function syncSeats(next) {
       desk.hitbox.userData.seat = i;
       const el = document.createElement("div"); el.className = "tag";
       const tagObj = new CSS2DObject(el); desk.labelAnchor.add(tagObj);
+      desk.labelAnchor.position.set(0, 0.05, 1.05);   // 名牌放在站點正前方的地板上，不擋到人物
       return { key: s.key, desk, worker, el, tagObj };
     });
   }
