@@ -20,10 +20,10 @@ const RetroShader = {
     uTime: { value: 0 },
     uUpside: { value: 0 },     // 0 = 80 年代暖色、1 = 顛倒世界
     uFlash: { value: 0 },      // 紅色閃電 0..1
-    uGrain: { value: 0.045 },
-    uScan: { value: 0.035 },
-    uVig: { value: 0.32 },
-    uChroma: { value: 0.0016 },
+    uGrain: { value: 0.0 },       // 2026-10-12 使用者覺得畫面不清楚：拿掉顆粒、掃描線、色差，暗角與褪色減弱
+    uScan: { value: 0.0 },
+    uVig: { value: 0.14 },
+    uChroma: { value: 0.0 },
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
@@ -39,8 +39,8 @@ const RetroShader = {
       vec3 c = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
       float l = dot(c, vec3(0.299, 0.587, 0.114));
       // 80 年代底片：偏暖、微褪色（黑位抬起帶暖、輕微降飽和、壓高光）
-      vec3 warm = mix(vec3(l), c, 0.86) * vec3(1.06, 1.0, 0.88);
-      warm = warm * 0.9 + vec3(0.055, 0.035, 0.02);
+      vec3 warm = mix(vec3(l), c, 0.96) * vec3(1.04, 1.0, 0.94);
+      warm = warm * 0.97 + vec3(0.015, 0.01, 0.005);
       warm = mix(warm, warm * warm * (3.0 - 2.0 * warm), 0.25);   // 一點 S 曲線
       // 顛倒世界：大幅降飽和、冷藍灰、壓暗、對比低
       vec3 cold = mix(vec3(l), c, 0.32) * vec3(0.78, 0.9, 1.08);
@@ -52,7 +52,7 @@ const RetroShader = {
       c *= 1.0 - uScan * (0.5 + 0.5 * sin(gl_FragCoord.y * 3.14159));
       c *= 1.0 - (uVig + uUpside * 0.18) * smoothstep(0.08, 0.5, r2);
       float n = hash(floor(gl_FragCoord.xy) + fract(uTime * 7.31) * 913.7) - 0.5;
-      c += n * (uGrain + uUpside * 0.02) * (1.0 - 0.5 * l);
+      c += n * uGrain * (1.0 - 0.5 * l);
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
     }`,
 };
@@ -70,7 +70,7 @@ export function createFx({ THREE, scene, camera, renderer, reducedMotion = false
   const bloomComposer = new EffectComposer(renderer, bloomRT);
   bloomComposer.renderToScreen = false;
   bloomComposer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.9, 0.55, 0);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.6, 0.3, 0);
   bloomComposer.addPass(bloom);
 
   const composer = new EffectComposer(renderer, rt);

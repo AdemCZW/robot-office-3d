@@ -203,7 +203,7 @@ body.st{
   background:radial-gradient(ellipse at 50% -10%,#2a0607 0%,#14060a 38%,${BLACK} 75%) fixed,${BLACK};
   color:var(--ink); font-size:18px;
 }
-body.st::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:${NOISE};opacity:.07;mix-blend-mode:screen}
+/* 整頁雜訊層已拿掉（2026-10-12 使用者覺得畫面不清楚） */
 body.st main{position:relative;z-index:1}
 body.st h1{font:700 30px/1.1 var(--st-title);letter-spacing:.04em;color:#ff4d57;
   text-shadow:0 0 2px ${RED},0 0 10px rgba(203,29,41,.8),0 0 24px ${RED_DK}}
@@ -257,7 +257,7 @@ body.st.upside{
   --bg:#141c26; --card:rgba(28,42,58,.86); --ink:#c9d4e0; --ink-2:rgba(201,212,224,.55); --sep:rgba(59,80,104,.6); --tint:#8e1820;
   background:radial-gradient(ellipse at 50% 0%,#3b5068 0%,#1c2a3a 45%,#0c1219 100%) fixed,#141c26;
 }
-body.st.upside::before{opacity:.12;mix-blend-mode:overlay}
+
 body.st.upside h1{color:#a3262e;text-shadow:0 0 6px rgba(142,24,32,.6),0 0 18px #3a0306}
 body.st.upside .ctl button:not(#_){color:#b8434b;background:linear-gradient(#1f2b38,#121a23);border-color:#2e3e50;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px #6e1218,0 0 8px rgba(89,5,5,.6),0 3px 0 #0a0f15;text-shadow:0 0 5px rgba(142,24,32,.7)}
