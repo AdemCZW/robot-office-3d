@@ -43,14 +43,34 @@ const HOME_WIDE = { pos: new THREE.Vector3(6.6, 10.6, 14.6), target: new THREE.V
 const HOME_TALL = { pos: new THREE.Vector3(10.5, 17.5, 3.4), target: new THREE.Vector3(0.4, 0, 0.7), fov: 50 };
 let HOME = HOME_WIDE, userMoved = false;
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+// 手感：轉動與縮放放慢一點、滾輪往游標方向縮放、平移貼著地板；手機上單指橫向拖＝轉、上下滑＝捲頁、雙指＝縮放與平移
+controls.rotateSpeed = MOBILE ? 0.75 : 0.55; controls.zoomSpeed = 0.8; controls.panSpeed = 0.7;
+controls.zoomToCursor = true; controls.screenSpacePanning = false;
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+renderer.domElement.style.touchAction = "pan-y";
+// 看的中心點限制在房間裡，不會拖到外面一片空白
+controls.addEventListener("change", () => { const g = controls.target;
+  g.x = Math.min(9, Math.max(-7.5, g.x)); g.y = Math.min(2, Math.max(0, g.y)); g.z = Math.min(6.5, Math.max(-5.5, g.z)); });
 controls.minDistance = 6; controls.maxDistance = 48; controls.maxPolarAngle = Math.PI * 0.46; controls.minPolarAngle = Math.PI * 0.05;
 controls.addEventListener("start", () => { userMoved = true; });
-function goHome() { camera.fov = HOME.fov; camera.updateProjectionMatrix(); camera.position.copy(HOME.pos); controls.target.copy(HOME.target); controls.update(); userMoved = false; }
-goHome();
+// 平滑飛到指定視角（0.9 秒、緩進緩出）；第一次載入直接跳過去
+let fly = null;
+function flyTo(pos, target, fov = camera.fov, instant = false) {
+  if (instant || RM) { camera.fov = fov; camera.updateProjectionMatrix(); camera.position.copy(pos); controls.target.copy(target); controls.update(); fly = null; return; }
+  fly = { t: 0, p0: camera.position.clone(), g0: controls.target.clone(), f0: camera.fov, p1: pos.clone(), g1: target.clone(), f1: fov };
+}
+function stepFly(dt) {
+  if (!fly) return; fly.t = Math.min(1, fly.t + dt / 0.9); const k = fly.t < 0.5 ? 2 * fly.t * fly.t : 1 - Math.pow(-2 * fly.t + 2, 2) / 2;
+  camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.g0, fly.g1, k);
+  camera.fov = fly.f0 + (fly.f1 - fly.f0) * k; camera.updateProjectionMatrix(); if (fly.t >= 1) fly = null;
+}
+controls.addEventListener("start", () => { fly = null; });   // 使用者一碰就把控制權還給他
+function goHome(instant = false) { flyTo(HOME.pos, HOME.target, HOME.fov, instant === true); userMoved = false; }
+goHome(true);
 const WALLCAM = { pos: new THREE.Vector3(-1.6, 2.6, 1.6), target: new THREE.Vector3(-7.9, 1.9, 1.7) };
-document.addEventListener("click", e => { if (e.target.id === "wallcam") { camera.position.copy(WALLCAM.pos); controls.target.copy(WALLCAM.target); controls.update(); userMoved = true; } });
-$("#cam").addEventListener("click", goHome);
+document.addEventListener("click", e => { if (e.target.id === "wallcam") { flyTo(WALLCAM.pos, WALLCAM.target, MOBILE ? 50 : 32); userMoved = true; } });
+$("#cam").addEventListener("click", () => goHome());
 
 // 燈：天光＋主光（投影）＋補光
 scene.add(new THREE.HemisphereLight(night ? 0x9fb0ff : 0xfff4e6, night ? 0x2a2018 : 0xb89a7a, night ? 0.45 : 0.9));
@@ -81,7 +101,8 @@ async function setTheme(on, { intro = false } = {}) {
     [ST, WORLD, INTRO, CASTM] = await Promise.all([opt("./ststations.js"), opt("./stworld.js"), opt("./stintro.js"), opt("./stcast.js")]);
     if (WORLD && !world) world = WORLD.buildWorld({ THREE, scene, renderer, night, reducedMotion: RM });
   }
-  if (on && intro && INTRO) await INTRO.playIntro($("#stage"), { reducedMotion: RM, title: (window.O3D_PUBLIC && window.O3D_PUBLIC.title) || ["NIGHT", "SHIFT"], subtitle: (window.O3D_PUBLIC && window.O3D_PUBLIC.subtitle) || "THE OFFICE" });
+  let introDone = false; try { introDone = sessionStorage.getItem("o3d-intro") === "1"; } catch {}
+  if (on && INTRO && (intro || !introDone)) { try { sessionStorage.setItem("o3d-intro", "1"); } catch {} await INTRO.playIntro($("#stage"), { reducedMotion: RM, title: (window.O3D_PUBLIC && window.O3D_PUBLIC.title) || ["NIGHT", "SHIFT"], subtitle: (window.O3D_PUBLIC && window.O3D_PUBLIC.subtitle) || "THE OFFICE" }); }
   themeOn = on; if (decor) decor.group.visible = on; if (world) world.group.visible = on;
   if (!on && upside) setUpside(false);
   if (INTRO) INTRO.applyHud(document.body, { on });
@@ -290,7 +311,13 @@ renderer.domElement.addEventListener("pointermove", e => {
   ray.setFromCamera(ptr, camera);
   renderer.domElement.style.cursor = ray.intersectObjects(seats.map(st => st.desk.hitbox), false).length ? "pointer" : "grab";
 });
+function focusSeat(i) {
+  const st = seats[i]; if (!st) return; const p = st.desk.group.position;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  flyTo(p.clone().add(new THREE.Vector3(0, 0.8, 0)).addScaledVector(dir, MOBILE ? 9 : 7.5), p.clone().add(new THREE.Vector3(0, 0.8, 0))); userMoved = true;
+}
 function select(i) {
+  focusSeat(i);
   sel = i; seats.forEach((st, k) => st.el.classList.toggle("on", k === i));
   const s = staff[i]; if (!s) return;
   $("#info").innerHTML = '<h2>' + s.base + ' · ' + KIND_NM[s.kind] + (s.lev ? ' ' + s.lev + 'x' : '') + '</h2><dl>' +
@@ -308,7 +335,7 @@ function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h); labels.setSize(w, h); camera.aspect = w / h;
   const want = w / h < 1 ? HOME_TALL : HOME_WIDE;          // 轉向（直↔橫）時換預設視角；使用者自己轉過就不動
-  if (want !== HOME) { HOME = want; if (!userMoved) goHome(); }
+  if (want !== HOME) { HOME = want; if (!userMoved) goHome(true); }
   camera.updateProjectionMatrix();
   if (fx) fx.resize(w, h);
 }
@@ -343,7 +370,7 @@ new IntersectionObserver(es => { onScreen = es[0].isIntersecting; wake(); }).obs
 const MAX_COURIERS = MOBILE ? 6 : 12;   // 同時在走的送件員上限（回放時排隊）
 // ?stats=1：右上角顯示每秒幀數、draw call、三角形數
 const stats = new URLSearchParams(location.search).has("stats") ? { n: 0, t0: 0, el: Object.assign(document.createElement("div"), { style: "position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;font:12px ui-monospace,monospace;padding:4px 8px;border-radius:6px;pointer-events:none" }) } : null;
-if (stats) { stats.el.id = "stats"; stage.appendChild(stats.el); window.__o3d = { scene, renderer, seats: () => seats, world: () => world }; }
+if (stats) { stats.el.id = "stats"; stage.appendChild(stats.el); window.__o3d = { scene, renderer, seats: () => seats, world: () => world, select: i => select(i) }; }
 function frame(now = performance.now()) {
   if (!running) return;
   perfTick(now);
@@ -356,7 +383,7 @@ function frame(now = performance.now()) {
   room.update(t, dt); vault.update(t, dt); if (themeOn && decor) decor.update(t, dt); if (themeOn && world) world.update(t, dt);
   for (const st of seats) { st.desk.update(t, dt); st.worker.update(t, dt); }
   for (const k of couriers) k.c.update(t, dt);
-  controls.update();
+  stepFly(dt); controls.update();
   if (themeOn && fx) { fx.update(t, dt); fx.render(); } else renderer.render(scene, camera);
   labels.render(scene, camera);
   if (stats) { stats.n++; if (t - stats.t0 >= 1) { const i = renderer.info.render;
