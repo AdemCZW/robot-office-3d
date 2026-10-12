@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D 機器人辦公室</title>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<style>
+:root{
+  --bg:#f0eee9; --card:#fbfaf7; --ink:#2a2420; --ink-2:rgba(42,36,32,.62); --sep:rgba(66,56,48,.14);
+  --pos:#007a2c; --neg:#d0102a; --tint:#9a4a24;
+  --font:system-ui,-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;
+  --num:ui-rounded,system-ui,-apple-system,"SF Pro Rounded","PingFang TC",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#171310; --card:#231e1a; --ink:#f3eee7; --ink-2:rgba(243,238,231,.62); --sep:rgba(160,140,120,.30);
+  --pos:#30d158; --neg:#ff6165; --tint:#e08a60;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--font)}
+main{max-width:1240px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:10px}
+h1{font-size:22px;margin:0}
+header .note{color:var(--ink-2);font-size:14px;flex:1 1 260px}
+header a{color:var(--tint);font-size:14px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.ctl button{appearance:none;border:0;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:7px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--sep)}
+.ctl button:hover{color:var(--tint)}
+.ctl button:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+.ctl .hint{font-size:13px;color:var(--ink-2);align-self:center}
+#stage{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(60,40,20,.14),0 1px 3px rgba(0,0,0,.08);background:#e9e1d6;aspect-ratio:16/9.4;min-height:420px}
+#stage canvas{display:block}
+#stage .msg{position:absolute;inset:0;display:grid;place-items:center;color:#6b5a48;font-size:15px}
+/* 名牌（CSS2D） */
+.tag{pointer-events:none;background:rgba(255,255,255,.92);color:#2a2420;border-radius:9px;padding:3px 8px;
+  box-shadow:0 3px 10px rgba(40,25,10,.16);font:600 11px/1.3 var(--num);white-space:nowrap}
+.tag .r{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.tag b{font-size:11px} .tag .p{font-size:12px;font-weight:800}
+.tag .p.pos{color:#059669} .tag .p.neg{color:#dc2626} .tag .p.mut{color:#64748b}
+.tag .w{margin-top:2px;border-radius:99px;padding:0 6px;color:#fff;font-size:10px;font-weight:700;text-align:center;background:#d97706}
+.tag .w.red{background:#dc2626}
+.tag.on{outline:2px solid #e08a60}
+.vtag{pointer-events:none;background:#1f2937;color:#9ca3af;border-radius:14px;padding:8px 16px;text-align:center;font:600 12px/1.3 var(--font);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.vtag b{display:block;color:#86efac;font:800 22px/1.2 var(--num)} .vtag b.neg{color:#fca5a5}
+.pop{pointer-events:none;font:800 24px var(--num);color:#16a34a;text-shadow:0 0 4px #fff,0 0 8px #fff;animation:rise 1.6s ease-out forwards}
+.pop.neg{color:#ef4444}
+@keyframes rise{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-50px)}}
+.info{margin-top:14px;background:var(--card);border-radius:16px;padding:16px 18px;min-height:64px;box-shadow:0 0 0 1px var(--sep)}
+.info h2{font-size:17px;margin:0 0 8px}
+.info dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px;margin:0}
+.info dt{font-size:12px;color:var(--ink-2)} .info dd{margin:0;font:600 16px var(--num)}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .mut{color:var(--ink-2)}
+details{margin-top:12px;background:var(--card);border-radius:16px;padding:12px 18px;box-shadow:0 0 0 1px var(--sep)}
+summary{cursor:pointer;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--sep)} .n{text-align:right;font-family:var(--num)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:12px;font-size:13px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+@media (prefers-reduced-motion:reduce){.pop{animation:none;opacity:0}}
+.legend.st-only{display:none} body.st .legend:not(.st-only){display:none} body.st .legend.st-only{display:flex}
+/* 80 年代主題：按鈕與名牌改成紅色霓虹描邊（#cb1d29／#590505），顛倒世界偏冷藍 */
+body.st #theme,body.st #upside{color:#cb1d29;box-shadow:0 0 0 1px #cb1d29,0 0 10px rgba(203,29,41,.45)}
+body.st .tag{background:rgba(18,12,12,.86);color:#f3e6dc;box-shadow:0 0 0 1px rgba(203,29,41,.7),0 0 12px rgba(89,5,5,.6)}
+body.st .tag .p.pos{color:#7dffa0} body.st .tag .p.neg{color:#ff7a7a}
+body.st .vtag{box-shadow:0 0 0 1px #cb1d29,0 0 18px rgba(203,29,41,.5)}
+body.upside .tag{background:rgba(20,28,40,.88);box-shadow:0 0 0 1px rgba(150,170,200,.5)}
+body.upside #stage{box-shadow:0 0 0 1px #590505,0 10px 40px rgba(89,5,5,.45)}
+
+/* ── 手機（≤640px）：直式舞台、按鈕橫向捲動、名牌縮小；選擇器多一層 html 才蓋得過主題 HUD 的 :not(#_) ── */
+@media (max-width:640px){
+  main{padding:12px}
+  header{gap:2px 10px;margin-bottom:8px}
+  h1{font-size:18px}
+  header .note{flex-basis:100%;order:3;font-size:12px;line-height:1.4}
+  header a{font-size:12px}
+  .ctl{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px 10px;padding:2px 12px 4px}
+  .ctl::-webkit-scrollbar{display:none}
+  .ctl button{font-size:13px;padding:6px 12px;flex:0 0 auto}
+  .ctl .hint{display:none}
+  #stage{aspect-ratio:3/4;min-height:0;max-height:78vh;border-radius:14px}
+  .tag{padding:2px 6px;border-radius:7px;font-size:9px}
+  .tag b{font-size:9px} .tag .p{font-size:10px}
+  .tag .w{font-size:8px;padding:0 4px}
+  .tag .w:not(.red),html body.st .tag:not(#_) .w:not(.red){display:none}   /* 手機只留紅色警示，名牌少一行 */
+  .vtag{padding:5px 10px;font-size:10px} .vtag b{font-size:16px}
+  .pop{font-size:17px}
+  .legend{font-size:11px;gap:2px 12px}
+  .info{padding:12px 14px} .info h2{font-size:15px}
+  .info dl{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px 12px} .info dd{font-size:14px}
+  details{padding:10px 14px} table{display:block;overflow-x:auto;white-space:nowrap;font-size:13px}
+  html body.st header .note,html body.st header a{font-size:14px}
+  html body.st h1{font-size:20px}
+  html body.st .ctl button:not(#_){font-size:15px;padding:5px 10px}
+  html body.st .tag:not(#_){padding:2px 5px}
+  html body.st .tag:not(#_) b{font-size:11px} html body.st .tag:not(#_) .p{font-size:12px}
+  html body.st .tag:not(#_) .w{font-size:10px}
+  html body.st .vtag:not(#_){padding:4px 10px;font-size:12px} html body.st .vtag:not(#_) b{font-size:20px}
+  html body.st .legend,html body.st table{font-size:13px}
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>3D 機器人辦公室</h1>
+    <span class="note" id="note">讀取中…</span>
+    <span class="note">示範資料・非真實交易</span>
+  </header>
+  <div class="ctl">
+    <button type="button" id="replay">▶ 回放近 7 天入袋</button>
+    <button type="button" id="skip">直接看結果</button>
+    <button type="button" id="cam">重設視角</button>
+    <button type="button" id="theme">✦ 80 年代主題</button>
+    <button type="button" id="upside" hidden>⇅ 顛倒世界</button>
+    <button type="button" id="wallcam" hidden>看字母牆</button>
+    <span class="hint">拖曳旋轉、滾輪縮放、點員工看數字（手機：單指旋轉、雙指縮放）</span>
+  </div>
+  <div id="stage"><div class="msg" id="msg">載入 3D 場景中…</div></div>
+  <div class="legend">
+    <span><i style="background:#3b82f6"></i>藍制服＝合約網格（桌邊金幣上下跳）</span>
+    <span><i style="background:#f97316"></i>橘制服＝合約馬丁（箱子＝加倉張數）</span>
+    <span><i style="background:#94a3b8"></i>灰制服＝定投</span>
+    <span>筆電燈綠＝浮動賺、紅＝浮動賠</span>
+    <span>桌燈紅閃＋冒汗＝離強平 &lt; 8%、黃＝&lt; 15%</span>
+  </div>
+  <div class="legend st-only">
+    <span>每個站點＝一台機器人：D&amp;D 桌、街機、無線電台、冰淇淋櫃台、實驗室、腳踏車台</span>
+    <span>站點主燈綠＝浮動賺、紅＝浮動賠</span>
+    <span>小警示燈紅閃＝離強平 &lt; 8%（顛倒世界的怪物會過來）、黃＝&lt; 15%</span>
+    <span>跳動的小東西＝合約網格；疊高的東西＝合約馬丁加倉張數；小豬＝定投</span>
+  </div>
+  <div class="info" id="info"><p class="mut" style="margin:0">點任何一位員工看那台機器人的數字。</p></div>
+  <details><summary>員工名冊（表格）</summary><table id="roster"><thead><tr><th>員工</th><th>類型</th><th class="n">浮動</th><th class="n">離強平</th><th class="n">本金</th></tr></thead><tbody></tbody></table></details>
+</main>
+<script>
+// 程式出錯時直接顯示在頁面上（3D 場景錯了不會有畫面提示）
+window.addEventListener("error",e=>{const n=document.getElementById("note"); if(n) n.textContent="錯誤："+e.message;});
+window.addEventListener("unhandledrejection",e=>{const n=document.getElementById("note"); if(n) n.textContent="錯誤："+(e.reason&&e.reason.message||e.reason);});
+</script>
+<script>window.O3D_PUBLIC = { title: ["NIGHT", "SHIFT"], subtitle: "THE ROBOT OFFICE" };</script>
+<script src="./demo-data.js"></script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
