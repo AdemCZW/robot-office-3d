@@ -316,10 +316,10 @@ new ResizeObserver(resize).observe(stage); resize();
 const clock = new THREE.Clock(); let t = 0, nextSpawn = 0;
 
 /* ---------- 效能：自動調畫質、陰影隔格更新、看不見就暫停 ----------
-   每 2 秒量一次 fps：低於 48 先降解析度（每次 0.25，最低 手機 0.75／電腦 1），到底了還不夠就關掉主光陰影；
-   連續 3 次都在 58 以上再慢慢升回去。陰影每兩格才重算一次（人物動作小，看不出差別）。
+   每 2 秒量一次 fps：低於 48 先關主光陰影，還不夠再降解析度（每次 0.25，最低 1，再低會糊）；
+   連續 3 次都在 58 以上再慢慢升回去（先升解析度、再開陰影）。陰影每兩格才重算一次（人物動作小，看不出差別）。
    分頁切走或舞台捲出畫面時整個停下來，不耗電。 */
-const PR_MAX = Math.min(MOBILE ? 1.5 : 2, devicePixelRatio || 1), PR_MIN = Math.min(PR_MAX, MOBILE ? 0.75 : 1);
+const PR_MAX = Math.min(MOBILE ? 1.5 : 2, devicePixelRatio || 1), PR_MIN = Math.min(PR_MAX, 1);   // 不低於 1：再低在手機高解析螢幕上會糊
 const perf = { pr: PR_MAX, t0: 0, n: 0, good: 0, shadows: true, frame: 0, fps: 60 };
 renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
 function setPR(p) { perf.pr = p; renderer.setPixelRatio(p); resize(); }
@@ -328,11 +328,12 @@ function perfTick(now) {
   const el = now - perf.t0; if (el < 2000) return;
   const fps = perf.n * 1000 / el; perf.fps = fps; perf.t0 = now; perf.n = 0;
   if (fps < 48) { perf.good = 0;
-    if (perf.pr > PR_MIN + 0.01) setPR(Math.max(PR_MIN, perf.pr - 0.25));
-    else if (perf.shadows) { perf.shadows = false; sun.castShadow = false; renderer.shadowMap.needsUpdate = true; }
+    // 先關陰影（看不太出差別），還不夠才降解析度
+    if (perf.shadows) { perf.shadows = false; sun.castShadow = false; renderer.shadowMap.needsUpdate = true; }
+    else if (perf.pr > PR_MIN + 0.01) setPR(Math.max(PR_MIN, perf.pr - 0.25));
   } else if (fps > 58 && ++perf.good >= 3) { perf.good = 0;
-    if (!perf.shadows) { perf.shadows = true; sun.castShadow = true; renderer.shadowMap.needsUpdate = true; }
-    else if (perf.pr < PR_MAX - 0.01) setPR(Math.min(PR_MAX, perf.pr + 0.25));
+    if (perf.pr < PR_MAX - 0.01) setPR(Math.min(PR_MAX, perf.pr + 0.25));
+    else if (!perf.shadows) { perf.shadows = true; sun.castShadow = true; renderer.shadowMap.needsUpdate = true; }
   }
 }
 let running = true, onScreen = true;
