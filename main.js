@@ -239,7 +239,9 @@ async function load() {
   const btc = (D.mart_open || []).find(b => b.base === "BTC" && b.mark) || D.bots.find(b => /^BTC/.test(b.pair) && b.status === "open");
   if (btc) room.setBtcPrice(btc.mark || btc.price);
   const open = staff.reduce((a, s) => a + (s.profit || 0), 0);
-  $("#note").innerHTML = staff.length + " 位員工在上班 · 浮動合計 <b class=\"" + cls(open) + "\">" + fmt(open) + "</b> · 近 7 天 " + E.length + " 筆入袋 · 資料 " + (D.fetched_at || "");
+  // 分成幾段，手機用 CSS 排成兩欄，比一長串好讀
+  $("#note").innerHTML = '<span class="k">' + staff.length + ' 位員工在上班</span><span class="k">浮動合計 <b class="' + cls(open) + '">' + fmt(open) + '</b></span>' +
+    '<span class="k">近 7 天 ' + E.length + ' 筆入袋</span><span class="k t">資料 ' + (D.fetched_at || "") + '</span>';
   drawRoster();
 }
 function paintVault() { const b = vtag.querySelector("b"); b.textContent = fmt(vaultSum) + " U"; b.className = vaultSum < 0 ? "neg" : ""; }
@@ -325,10 +327,26 @@ function select(i) {
       .concat(s.info).map(([k, v]) => '<div><dt>' + k + '</dt><dd>' + (v ?? "—") + '</dd></div>').join("") + '</dl>' +
     (s.stale ? '<p class="neg" style="margin:8px 0 0">' + s.stale + '（網頁快照可能過期）</p>' : "");
 }
-function drawRoster() {
-  $("#roster tbody").innerHTML = staff.map(s => '<tr><td>' + nameOf(s) + '</td><td>' + KIND_NM[s.kind] + '</td><td class="n ' + cls(s.profit) + '">' + fmt(s.profit) +
-    '</td><td class="n">' + (s.liq != null ? s.liq.toFixed(1) + "%" : "—") + '</td><td class="n">' + (s.cap || 0).toLocaleString("en-US") + '</td></tr>').join("");
+function drawRoster() {   // 依風險排序（離強平近的在前）；手機用 CSS 排成卡片
+  const order = staff.map((s, i) => [s, i]).sort((a, b) => (a[0].liq ?? 999) - (b[0].liq ?? 999));
+  $("#roster tbody").innerHTML = order.map(([s, i]) => '<tr data-i="' + i + '" class="' + (s.alert || "") + '"><td class="nm">' + nameOf(s) + '</td><td class="ty">' + KIND_NM[s.kind] + '</td><td class="n pf ' + cls(s.profit) + '">' + fmt(s.profit) +
+    '</td><td class="n lq">' + (s.liq != null ? s.liq.toFixed(1) + "%" : "—") + '</td><td class="n cp">' + (s.cap || 0).toLocaleString("en-US") + '</td></tr>').join("");
 }
+$("#roster").addEventListener("click", e => { const tr = e.target.closest("tr[data-i]"); if (tr) { select(+tr.dataset.i); $("#stage").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+if (MOBILE) { $("#rosterBox").open = true; $("#legendBox").open = false; }
+
+/* ---------- 名牌避讓：重疊時只留重要的（紅色警示 > 選中的 > 浮動金額大的） ---------- */
+function declutter() {
+  const items = seats.map((st, i) => ({ st, i, r: st.el.getBoundingClientRect(),
+    pri: (st.s && st.s.alert === "red" ? 1e6 : 0) + (sel === i ? 1e5 : 0) + Math.abs((st.s && st.s.profit) || 0) }))
+    .filter(x => x.r.width > 0).sort((a, b) => b.pri - a.pri);
+  const kept = [];
+  for (const x of items) {
+    const hit = kept.some(k => !(x.r.right + 3 < k.left || x.r.left - 3 > k.right || x.r.bottom + 2 < k.top || x.r.top - 2 > k.bottom));
+    x.st.el.classList.toggle("hide", hit); if (!hit) kept.push(x.r);
+  }
+}
+setInterval(declutter, 300);
 
 /* ---------- 尺寸與主迴圈 ---------- */
 function resize() {

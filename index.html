@@ -100,6 +100,34 @@ body.upside #stage{box-shadow:0 0 0 1px #590505,0 10px 40px rgba(89,5,5,.45)}
   html body.st .vtag:not(#_){padding:4px 10px;font-size:12px} html body.st .vtag:not(#_) b{font-size:20px}
   html body.st .legend,html body.st table{font-size:13px}
 }
+
+/* 狀態列分段、名牌避讓、圖例收合 */
+header .note .k+.k::before{content:"·";margin:0 .45em;opacity:.6}
+.tag{transition:opacity .2s} html body .tag.hide{opacity:0!important;visibility:hidden}
+details.legendbox{margin-top:12px;background:none;box-shadow:none;padding:0}
+details.legendbox>summary{font-size:13px;color:var(--ink-2);font-weight:600}
+#roster tbody tr{cursor:pointer} #roster tbody tr.red td.lq{color:var(--neg);font-weight:700}
+@media (max-width:640px){
+  header .note{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:13px}
+  header .note .k+.k::before{content:none}
+  header .note .k.t{grid-column:1/-1;font-size:11px;opacity:.75}
+  header .note b{font-size:15px}
+  /* 員工名冊變卡片：一列一台，大字浮動、右側離強平 */
+  #roster thead{display:none} #roster,#roster tbody{display:block;white-space:normal}
+  #roster tbody tr{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm pf" "ty lq";gap:0 10px;padding:9px 2px;border-bottom:1px solid var(--sep);align-items:baseline}
+  #roster td.nm{grid-area:nm} #roster td.pf{grid-area:pf} #roster td.ty{grid-area:ty} #roster td.lq{grid-area:lq}
+  #roster td{border:0;padding:0;text-align:left}
+  #roster td.nm{font-weight:700;font-size:15px} #roster td.pf{text-align:right;font-size:17px;font-weight:700}
+  #roster td.ty{font-size:12px;color:var(--ink-2)} #roster td.lq{text-align:right;font-size:12px;color:var(--ink-2)}
+  #roster td.lq::before{content:"離強平 "} #roster td.cp{display:none}
+  /* 80 年代主題在手機上：說明文字改回一般字體（VT323 沒有中文、細字難讀），數字維持霓虹 */
+  html body.st{--font:system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+  html body.st header .note{font-family:var(--font);font-size:13px;letter-spacing:0}
+  html body.st .legend,html body.st .info,html body.st details{font-family:var(--font);letter-spacing:0}
+  html body.st #roster td.pf{font-family:"VT323",ui-monospace,monospace;font-size:22px}
+  html body.st details>summary:not(#_),html body details>summary{font-size:15px;line-height:1.4;letter-spacing:0}
+  html body.st .info:not(#_) p{font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -119,6 +147,7 @@ body.upside #stage{box-shadow:0 0 0 1px #590505,0 10px 40px rgba(89,5,5,.45)}
     <span class="hint">拖曳旋轉、滾輪縮放、點員工看數字（手機：單指旋轉、雙指縮放）</span>
   </div>
   <div id="stage"><div class="msg" id="msg">載入 3D 場景中…</div></div>
+  <details class="legendbox" id="legendBox" open><summary>圖例</summary>
   <div class="legend">
     <span><i style="background:#3b82f6"></i>藍制服＝合約網格（桌邊金幣上下跳）</span>
     <span><i style="background:#f97316"></i>橘制服＝合約馬丁（箱子＝加倉張數）</span>
@@ -132,8 +161,9 @@ body.upside #stage{box-shadow:0 0 0 1px #590505,0 10px 40px rgba(89,5,5,.45)}
     <span>小警示燈紅閃＝離強平 &lt; 8%（顛倒世界的怪物會過來）、黃＝&lt; 15%</span>
     <span>跳動的小東西＝合約網格；疊高的東西＝合約馬丁加倉張數；小豬＝定投</span>
   </div>
+  </details>
   <div class="info" id="info"><p class="mut" style="margin:0">點任何一位員工看那台機器人的數字。</p></div>
-  <details><summary>員工名冊（表格）</summary><table id="roster"><thead><tr><th>員工</th><th>類型</th><th class="n">浮動</th><th class="n">離強平</th><th class="n">本金</th></tr></thead><tbody></tbody></table></details>
+  <details id="rosterBox"><summary>員工名冊（依離強平排序，點一列可看那台）</summary><table id="roster"><thead><tr><th>員工</th><th>類型</th><th class="n">浮動</th><th class="n">離強平</th><th class="n">本金</th></tr></thead><tbody></tbody></table></details>
 </main>
 <script>
 // 程式出錯時直接顯示在頁面上（3D 場景錯了不會有畫面提示）
